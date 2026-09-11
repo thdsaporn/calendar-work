@@ -128,12 +128,12 @@ select:focus,input:focus{outline:none;border-color:var(--navy-light);box-shadow:
   color:#fff;font-weight:600;font-size:13px;text-align:center;padding:9px 4px;
 }
 .cal-wrap{display:flex;justify-content:center;width:100%}
-.cal-days{display:grid;grid-template-columns:repeat(7,1fr);width:100%;max-width:960px;margin:0 auto}
+.cal-days{width:100%;max-width:960px;margin:0 auto}
 .cal-day{
   min-height:110px;  box-shadow: inset 1px 0 0 #d5dbe4, inset 0 1px 0 #d5dbe4;      padding:6px;cursor:pointer;transition:background .15s ease;position:relative;vertical-align:top;overflow:visible;
 }
-.cal-day:nth-child(7n){border-right:none}
-.cal-day:nth-child(n+36){border-bottom:none}
+.cal-weekrow{display:grid;grid-template-columns:repeat(7,1fr);position:relative;min-height:110px}
+.cal-weekrow .cal-day{min-height:110px}
 .cal-day:hover{background:#f8fafc}
 .cal-day.empty{background:#f8fafc;cursor:default}
 .cal-day.empty:hover{background:#f8fafc}
@@ -152,6 +152,17 @@ select:focus,input:focus{outline:none;border-color:var(--navy-light);box-shadow:
 .chip .ct{font-weight:700;margin-right:4px;opacity:.85}
 .chip.more{background:#f1f5f9;color:var(--muted);font-weight:700;border-left:3px solid transparent;text-align:center}
 .cal-day.empty .chips{display:none}
+/* แถบห้วงเวลาหลายวัน (เชื่อมต่อกัน) */
+.evbar{
+  position:absolute;z-index:2;height:20px;display:flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;
+  overflow:hidden;white-space:nowrap;cursor:pointer;
+  transition:filter .15s ease;
+}
+.evbar:hover{filter:brightness(0.94)}
+.evbar .ct{font-weight:700;opacity:.85;flex:0 0 auto}
+.evbar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0}
+.evbar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0}
 
 /* ============ รายการทั้งหมด ============ */
 .list-card{background:var(--card);border:1px solid var(--border-light);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden}
@@ -267,9 +278,11 @@ footer b{color:#d6dfef}
   #print-head .ph3{font-size:11pt;color:#333;margin-top:2px}
   .cal-head{display:none!important}
   .cal-days{border:1.2px solid #999;box-shadow:none;border-radius:0}
+  .cal-weekrow{page-break-inside:avoid}
   .cal-day{box-shadow:inset 0 0 0 #d5dbe4!important}
   .cal-week div{background:var(--navy)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:5px 2px;font-size:11pt}      .cal-day{min-height:96px;padding:4px;page-break-inside:avoid}
   .cal-day.empty{min-height:96px}
+  .evbar{height:16px;font-size:8.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .chips{gap:2px; overflow:visible}
   .chip{    font-size:8.5pt;padding:2px 4px;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:visible}
   .list-card{border:1.2px solid #999;box-shadow:none;border-radius:0}
@@ -281,6 +294,8 @@ footer b{color:#d6dfef}
 }
 @media (max-width:640px){
   .cal-day{min-height:74px;padding:4px}
+  .cal-weekrow{min-height:74px}
+  .evbar{font-size:10px;height:21px;padding:0 4px}
   .chips{gap:2px}
   .chip{font-size:10px;padding:2px 4px}
   .search-box input{width:100%}
@@ -605,59 +620,84 @@ function goToday(){ calDate = new Date(); renderCalendar(); }
 function renderCalendar(){
   const y = calDate.getFullYear(), m = calDate.getMonth();
   document.getElementById('month-label').textContent = THAI_MONTHS[m]+' '+thaiDigits(y+543);
-  // แผนที่วัน -> รายการ (เฉพาะหมวดที่กรอง)
   const cat = activeCatFilter();
-  const byDate = {};
-  ENTRIES.forEach(e=>{
-    if(cat!=='all' && e.catId!==cat) return;
-    const s = parseYMD(e.startDate), t = parseYMD(e.endDate);
-    let d = new Date(Math.max(s.getTime(), new Date(y,m,1).getTime()));
-    const last = new Date(Math.min(t.getTime(), new Date(y,m,daysInMonth(y,m+1)).getTime()));
-    for(; d<=last; d=new Date(d.getTime()+86400000)){
-      const key = toYMD(d);
-      (byDate[key] = byDate[key] || []).push(e);
-    }
-  });
+  // รายการที่คร่อมเดือนนี้ เรียงตามวันเริ่ม แล้วตามเวลา
+  const monthStart = toYMD(new Date(y,m,1)), monthEnd = toYMD(new Date(y,m,daysInMonth(y,m+1)));
+  const spans = ENTRIES.filter(e=> cat==='all'||e.catId===cat)
+    .filter(e=> e.startDate<=monthEnd && e.endDate>=monthStart)
+    .sort((a,b)=> a.startDate===b.startDate ? (a.startTime||'').localeCompare(b.startTime||'') : a.startDate.localeCompare(b.startDate));
   const firstDow = new Date(y,m,1).getDay();
   const nDays = daysInMonth(y,m+1);
   const todayStr = toYMD(new Date());
-  let html = '';
-  for(let i=0;i<firstDow;i++) html += '<div class="cal-day empty"></div>';
-  for(let day=1; day<=nDays; day++){
-    const key = y+'-'+pad2(m+1)+'-'+pad2(day);
-    const list = byDate[key] || [];
-    const dow = new Date(y,m,day).getDay();
-    const cls = ['cal-day', dow===0||dow===6?'weekend':'', key===todayStr?'today':''].join(' ');
-    html += `<div class="${cls}" onclick="openDayModal('${key}')">`;
-    html += `<span class="dnum">${thaiDigits(day)}</span>`;
-    if(list.length){
-      html += '<div class="chips">';
-      list.slice(0,2).forEach(e=>{
-        const c = catById(e.catId);
-        const col = c?c.color:'#64748b';
-        const t = [e.startTime,e.endTime].filter(Boolean).join('–');
-        html += `<span class="chip" style="background:${hexA(col,.12)};color:${col};border-left:3px solid ${col}" title="${esc(e.title||'')}${t?' ('+esc(t)+')':''}" onclick="event.stopPropagation();openEntryModal('${e.id}')">${t?`<span class="ct">${esc(t)}</span>`:''}${esc(e.title||'(ไม่ระบุเรื่อง)')}</span>`;
-      });
-      if(list.length>2) html += `<span class="chip more">+${thaiDigits(list.length-2)} รายการ</span>`;
-      html += '</div>';
+  const weekCount = Math.ceil((firstDow+nDays)/7);
+  // คำนวณตำแหน่ง col (0-41) ของแต่ละรายการ ครอบตัดในเดือน
+  const items = spans.map(e=>{
+    const s = parseYMD(e.startDate), t = parseYMD(e.endDate);
+    const from = Math.max(s.getTime(), new Date(y,m,1).getTime());
+    const to = Math.min(t.getTime(), new Date(y,m,nDays).getTime());
+    return { e,
+      fromIdx: firstDow + Math.round((from - new Date(y,m,1).getTime())/86400000),
+      toIdx: firstDow + Math.round((to - new Date(y,m,1).getTime())/86400000)
+    };
+  });
+  // วาง lane ต่อสัปดาห์: lane[w] = รายการชุดของสัปดาห์ w พร้อมตำแหน่ง
+  const LANE_H = 22;
+  const weekBars = Array.from({length:weekCount}, ()=>[]); // ต่อสัปดาห์: {item, lane, a, b, contL, contR}
+  const laneEndPerWeek = Array.from({length:weekCount}, ()=>[]); // lane -> last col ที่จองแล้วในสัปดาห์นั้น (0-6)
+  items.forEach(it=>{
+    let a = it.fromIdx;
+    while(a <= it.toIdx){
+      const w = Math.floor(a/7);
+      const b = Math.min(it.toIdx, w*7+6);
+      const lanes = laneEndPerWeek[w];
+      let lane = -1;
+      for(let l=0;l<lanes.length;l++){ if(lanes[l] < a-w*7){ lane = l; break; } }
+      if(lane<0){ lanes.push(b-w*7); lane = lanes.length-1; } else { lanes[lane] = b-w*7; }
+      weekBars[w].push({ it, lane, a, b, contL: a>it.fromIdx, contR: b<it.toIdx });
+      a = b+1;
     }
+  });
+  let html = '';
+  let dayCursor = 1;
+  for(let w=0; w<weekCount; w++){
+    const bars = weekBars[w];
+    const nLanes = bars.length ? Math.max(...bars.map(x=>x.lane))+1 : 0;
+    const rowMinH = Math.max(110, 30 + nLanes*LANE_H + 8);
+    html += `<div class="cal-weekrow" style="min-height:${rowMinH}px">`;
+    for(let d=0; d<7; d++){
+      const cell = w*7+d;
+      if(cell < firstDow || dayCursor > nDays){ html += '<div class="cal-day empty"></div>'; continue; }
+      const key = y+'-'+pad2(m+1)+'-'+pad2(dayCursor);
+      const dow = new Date(y,m,dayCursor).getDay();
+      const cls = ['cal-day', dow===0||dow===6?'weekend':'', key===todayStr?'today':''].join(' ');
+      html += `<div class="${cls}" onclick="openDayModal('${key}')">`;
+      html += `<span class="dnum">${thaiDigits(dayCursor)}</span>`;
+      html += '</div>';
+      dayCursor++;
+    }
+    bars.forEach(({it,lane,a,b,contL,contR})=>{
+      const e = it.e;
+      const c = catById(e.catId);
+      const col = c?c.color:'#64748b';
+      const tstr = [e.startTime,e.endTime].filter(Boolean).join('–');
+      const left = (a-w*7)/7*100, width = (b-a+1)/7*100;
+      html +=
+        `<div class="evbar${contL?' cont-l':''}${contR?' cont-r':''}" ` +
+        `style="top:${28+lane*LANE_H}px;left:calc(${left}% + 1px);width:calc(${width}% - 2px);background:${hexA(col,.14)};color:${col};border-left:3px solid ${col}" ` +
+        `title="${esc(e.title||'')}${tstr?' ('+esc(tstr)+')':''}" ` +
+        `onclick="event.stopPropagation();openEntryModal('${e.id}')">` +
+        `${tstr?`<span class="ct">${esc(tstr)}</span>`:''}${esc(e.title||'(ไม่ระบุเรื่อง)')}</div>`;
+    });
     html += '</div>';
   }
-  const cells = firstDow+nDays;
-  const leftover = cells%7===0 ? 0 : 7-(cells%7);
-  for(let i=0;i<leftover;i++) html += '<div class="cal-day empty"></div>';
   document.getElementById('cal-days').innerHTML = html;
-  document.getElementById('cal-count').textContent = `เดือนนี้ ${thaiDigits(byDateAllCount())} ห้วงเวลา`;
+  document.getElementById('cal-count').textContent = `เดือนนี้ ${thaiDigits(spans.length)} ห้วงเวลา`;
 }
 function byDateAllCount(){
   const cat = activeCatFilter();
   const y = calDate.getFullYear(), m = calDate.getMonth();
-  const seen = new Set();
-  ENTRIES.forEach(e=>{
-    if(cat!=='all' && e.catId!==cat) return;
-    if(e.startDate.slice(0,7) <= y+'-'+pad2(m+1) && e.endDate.slice(0,7) >= y+'-'+pad2(m+1)) seen.add(e.id);
-  });
-  return seen.size;
+  return ENTRIES.filter(e=> (cat==='all'||e.catId===cat))
+    .filter(e=> e.startDate.slice(0,7) <= y+'-'+pad2(m+1) && e.endDate.slice(0,7) >= y+'-'+pad2(m+1)).length;
 }
 
 /* ================= มุมมองรายการ ================= */
