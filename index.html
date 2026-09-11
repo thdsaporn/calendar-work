@@ -191,7 +191,7 @@ tbody tr.archived{opacity:.55}
   z-index:100;padding:6vh 16px 30px;overflow-y:auto;
   backdrop-filter:blur(2px);
 }
-.modal.open{display:flex}
+.modal.open{display:flex!important}
 .modal-box{
   background:#fff;border-radius:16px;width:100%;max-width:520px;
   box-shadow:0 24px 60px rgba(9,25,44,.35);overflow:hidden;
@@ -409,22 +409,22 @@ footer b{color:#d6dfef}
         <div style="display:flex;gap:6px;align-items:center">
           <input type="time" id="f-start-time" style="flex:1;display:none" aria-label="เวลาเริ่ม">
           <input type="time" id="f-end-time" style="flex:1;display:none" aria-label="เวลาสิ้นสุด">
-          <div class="row2" style="display:flex;gap:10px;align-items:center">
+          <div style="display:flex;gap:10px;align-items:center">
             <span style="color:var(--muted);font-size:13px">เวลา</span>
             <input type="time" id="f-st-opt" style="width:78px" aria-label="เวลาเริ่ม" title="เวลาเริ่ม">
             <span style="color:var(--muted)">–</span>
-            <input type="time" id="f-et-opt" style="width:78px" aria-label="เวลาสิ้นสุด" title="เวลาสิ้นสุด">             <button type="button" onclick="setTimesDefault(document.getElementById('f-st-opt'),document.getElementById('f-et-opt'))" style="font-size:12.5px;padding:4px 10px" title="ตั้งค่าเริ่มต้น 08:00–16:30">ตั้งค่า</button>
+            <input type="time" id="f-et-opt" style="width:78px" aria-label="เวลาสิ้นสุด" title="เวลาสิ้นสุด">
+            <button type="button" onclick="setTimesDefault(document.getElementById('f-st-opt'),document.getElementById('f-et-opt'))" style="font-size:12.5px;padding:4px 10px" title="ตั้งค่าเริ่มต้น 08:00–16:30">ตั้งค่า</button>
           </div>
-      </label>
       </label>
       <label>เลือกเวลาจากรายการเดิม <span style="font-weight:400;color:var(--muted);font-size:12.5px">(เลือกแล้วกรอกให้อัตโนมัติ)</span>
         <select id="f-recent-time" onchange="applyRecentTime(this.value)"><option value="">— เลือกห้วงเวลาที่เคยใช้ —</option></select>
       </label>
       <div class="row2">
-        <label>วันที่เริ่ม
+        <label>วันที่เริ่ม <span style="font-weight:400;color:var(--muted);font-size:12.5px">(ไม่บังคับ)</span>
           <input type="date" id="f-start">
         </label>
-        <label>วันที่สิ้นสุด
+        <label>วันที่สิ้นสุด <span style="font-weight:400;color:var(--muted);font-size:12.5px">(ไม่บังคับ)</span>
           <input type="date" id="f-end">
         </label>
       </div>
