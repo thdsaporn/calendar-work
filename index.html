@@ -197,6 +197,17 @@ tbody td{padding:11px 14px;border-top:1px solid var(--border-light);font-size:14
 tbody tr{transition:background .15s ease}
 tbody tr:hover{background:#f8fafc}
 tbody tr.archived{opacity:.55}
+tbody tr.grp-row:hover{background:inherit}
+tbody tr.grp-row td{padding:10px 14px;font-family:'Prompt','Sarabun',sans-serif;font-weight:600;font-size:14.5px;color:var(--navy);background:#eef2f8;border-top:2px solid var(--border-light);white-space:normal;word-break:break-word;page-break-after:avoid;break-after:avoid}
+tbody tr.grp-row .grp-count{color:var(--muted);font-weight:500;margin-left:6px}
+tbody tr.grp-row.grp-now td{background:linear-gradient(90deg,rgba(212,175,55,.28),rgba(212,175,55,.10));color:var(--navy-dark);border-top:2px solid var(--gold);box-shadow:inset 4px 0 0 var(--gold)}
+tbody tr.grp-row.grp-sub td{background:#f8fafc;font-size:13px;font-weight:600;color:var(--muted);padding:6px 14px 6px 24px;border-top:1px solid var(--border-light)}
+tbody tr.grp-row.grp-past td{color:var(--muted);padding:0}
+tbody tr.grp-row.grp-past.searching td{padding:10px 14px}
+.grp-toggle{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 14px;font:inherit;color:inherit;cursor:pointer;user-select:none}
+.grp-toggle:hover{background:#e6ebf3}
+.grp-toggle:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+#list-body.past-closed tr.past-item{display:none}
 .cat-badge{
   display:inline-flex;align-items:center;gap:7px;
   font-size:12.5px;font-weight:600;color:#fff;
@@ -322,8 +333,17 @@ footer b{color:#d6dfef}
   .cat-badge{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   tbody tr{page-break-inside:avoid}
   tbody td{border-top:1px solid #ccc}
+  #list-body.past-closed tr.past-item{display:table-row!important}
+  tbody tr.grp-row{page-break-after:avoid;break-after:avoid}
+  tbody tr.grp-row td{font-size:11pt;padding:5px 8px;background:#eef2f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;cursor:default}
+  tbody tr.grp-row.grp-now td{background:#f6e9b5!important;box-shadow:none}
+  tbody tr.grp-row.grp-sub td{font-size:10pt;background:#f8fafc!important}
+  .grp-hint,.grp-arrow{display:none!important}
+  tbody tr.archived{opacity:1}
+  .grp-toggle{padding:5px 8px}
 }
 @media (max-width:640px){
+  .list-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .cal-day{min-height:74px;padding:4px}
   .cal-weekrow{min-height:74px}
   .evbar{font-size:10px;height:21px;padding:0 4px}
@@ -624,6 +644,7 @@ function normEntry(d, id){
   if(!isYMD(d.startDate) || !isYMD(d.endDate)) return null;
   const tm = v => (typeof v==='string' && /^\d{2}:\d{2}$/.test(v)) ? v : '';
   const catId = typeof d.catId==='string' && ID_RE.test(d.catId) ? d.catId : '';
+  if(d.endDate < d.startDate) d = { ...d, endDate: d.startDate };
   return { id, title:str(d.title,300), details:str(d.details,1000), startDate:d.startDate, endDate:d.endDate,
            startTime:tm(d.startTime), endTime:tm(d.endTime), catId, by:str(d.by,120) };
 }
@@ -836,9 +857,9 @@ function renderList(){
     body.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:40px 20px"><div class="big">🗓️</div><h3>ไม่พบรายการ</h3><p>${ENTRIES.length===0?'ยังไม่มีห้วงเวลาในระบบ — กดปุ่ม "เพิ่มห้วงเวลา" เพื่อเริ่มต้น':'ไม่มีรายการตรงกับที่กรอง/ค้นหา'}</p></div></td></tr>`;
     return;
   }
-  body.innerHTML = list.map(e=>{
+  const rowHtml = (e, cls)=>{
     const c = catById(e.catId);
-    return `<tr>
+    return `<tr${cls?` class="${cls}"`:''}>
       <td class="daterange">${esc(fmtRange(e))}</td>
       <td class="time-range">${esc(fmtTimeRange(e))}</td>
       <td><span class="cat-badge" style="background:${c?c.color:'#64748b'}">${escCat(c)}</span></td>
@@ -849,7 +870,72 @@ function renderList(){
         <button class="btn btn-sm btn-danger" onclick="deleteEntry('${e.id}')">ลบ</button>
       </td>
     </tr>`;
-  }).join('');
+  };
+
+  // จัดกลุ่มตามช่วงเวลา (เทียบสตริง YYYY-MM-DD) — แต่ละรายการอยู่เพียงกลุ่มเดียว
+  const today = toYMD(new Date());
+  const nowD = new Date();
+  const ym = (y,m0)=> y+'-'+pad2(m0+1);
+  const curYM = ym(nowD.getFullYear(), nowD.getMonth());
+  const nxt = new Date(nowD.getFullYear(), nowD.getMonth()+1, 1);
+  const nextYM = ym(nxt.getFullYear(), nxt.getMonth());
+  const monthLabel = key=>{ const p=key.split('-'); return THAI_MONTHS[+p[1]-1]+' '+thaiDigits(+p[0]+543); };
+  const gNow=[], gThis=[], gNext=[], gLater=[], gPast=[];
+  list.forEach(e=>{
+    const end = e.endDate || e.startDate;
+    if(end < today) gPast.push(e);
+    else if(e.startDate <= today) gNow.push(e);
+    else {
+      const k = e.startDate.slice(0,7);
+      if(k <= curYM) gThis.push(e);
+      else if(k === nextYM) gNext.push(e);
+      else gLater.push(e);
+    }
+  });
+  const byEnd = (a,b)=> (a.endDate||a.startDate).localeCompare(b.endDate||b.startDate) || a.startDate.localeCompare(b.startDate);
+  gNow.sort(byEnd);
+  gPast.sort((a,b)=> byEnd(b,a));   // ใหม่สุดก่อน
+
+  const hdr = (cls, label, n, extra)=> `<tr class="grp-row ${cls}"${extra||''}><td colspan="6">${label}<span class="grp-count">(${thaiDigits(n)})</span></td></tr>`;
+  let html = '';
+  if(gNow.length){ html += hdr('grp-now', '● '+esc('กำลังดำเนินการ'), gNow.length) + gNow.map(e=>rowHtml(e)).join(''); }
+  if(gThis.length){ html += hdr('', esc('เดือนนี้ – '+monthLabel(curYM)), gThis.length) + gThis.map(e=>rowHtml(e)).join(''); }
+  if(gNext.length){ html += hdr('', esc('เดือนหน้า – '+monthLabel(nextYM)), gNext.length) + gNext.map(e=>rowHtml(e)).join(''); }
+  if(gLater.length){
+    html += hdr('', esc('ถัดไป'), gLater.length);
+    let lastK = '';
+    gLater.forEach(e=>{
+      const k = e.startDate.slice(0,7);
+      if(k !== lastK){ lastK = k; html += `<tr class="grp-row grp-sub"><td colspan="6">${esc(monthLabel(k))}</td></tr>`; }
+      html += rowHtml(e);
+    });
+  }
+  let pastClosed = false;
+  if(gPast.length){
+    const searching = !!((document.getElementById('search-q')||{}).value||'').trim();
+    const open = searching || LIST_PAST_OPEN;
+    pastClosed = !open;
+    const lbl = 'ผ่านไปแล้ว ('+thaiDigits(gPast.length)+')';
+    const arrow = `<span class="grp-arrow">${open?'▾':'▸'} </span>`;
+    // ระหว่างค้นหา แสดงทั้งหมดและปุ่มไม่ทำงาน (ไม่เปลี่ยนค่าที่จำไว้)
+    html += searching
+      ? `<tr class="grp-row grp-past searching"><td colspan="6">${esc(lbl)}<span class="grp-hint"> — แสดงทั้งหมดระหว่างค้นหา</span></td></tr>`
+      : `<tr class="grp-row grp-past"><td colspan="6"><button type="button" id="past-toggle" class="grp-toggle" aria-expanded="${open}" onclick="toggleListPast()">${arrow}${esc(lbl)}<span class="grp-hint">${open?' — กดเพื่อซ่อน':' — กดเพื่อแสดง'}</span></button></td></tr>`;
+    html += gPast.map(e=>rowHtml(e,'archived past-item')).join('');
+  }
+  body.classList.toggle('past-closed', pastClosed);
+  const hadFocus = document.activeElement && document.activeElement.id === 'past-toggle';
+  body.innerHTML = html;
+  if(hadFocus){ const b = document.getElementById('past-toggle'); if(b) b.focus(); }
+  // 6: บอกจำนวนที่ซ่อนอยู่
+  if(pastClosed) document.getElementById('list-count').textContent = `${thaiDigits(list.length)} รายการ (ซ่อนที่ผ่านไปแล้ว ${thaiDigits(gPast.length)})`;
+}
+let LIST_PAST_OPEN = false;
+try{ LIST_PAST_OPEN = localStorage.getItem('cal_list_past_open')==='1'; }catch(e){}
+function toggleListPast(){
+  LIST_PAST_OPEN = !LIST_PAST_OPEN;
+  try{ localStorage.setItem('cal_list_past_open', LIST_PAST_OPEN?'1':'0'); }catch(e){}
+  renderList();
 }
 
 /* ================= สลับมุมมอง ================= */
