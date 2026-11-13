@@ -239,10 +239,15 @@ tbody tr.archived{opacity:.55}
 .cat-add input[type="text"]{flex:1;min-width:150px}
 .cat-add input[type="color"]{width:46px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer}
 .cat-hint{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.5}
-.cloud-status{font-size:13px;font-weight:600;border-radius:10px;padding:10px 14px;margin-bottom:12px;background:#f1f5f9;color:var(--muted)}
-.cloud-mode-hint{font-size:12.5px;color:var(--navy);margin-bottom:10px;line-height:1.5}
-.cloud-mode-hint details summary{cursor:pointer}
-.cloud-mode-hint a{color:var(--navy-3);text-decoration:underline}
+#sync-chip{position:fixed;left:10px;bottom:10px;z-index:50;max-width:calc(100vw - 20px);display:flex;align-items:center;gap:7px;
+  font-size:12.5px;font-weight:600;line-height:1.3;padding:6px 12px;border-radius:999px;background:#fff;color:var(--muted);
+  border:1px solid var(--border);box-shadow:var(--shadow);cursor:pointer}
+#sync-chip .sync-dot{width:9px;height:9px;border-radius:50%;background:#94a3b8;flex:0 0 auto}
+#sync-chip .sync-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sync-chip.sync-on{color:#065f46;border-color:#a7f3d0}#sync-chip.sync-on .sync-dot{background:#10b981}
+#sync-chip.sync-busy{color:#92400e;border-color:#fde68a}#sync-chip.sync-busy .sync-dot{background:#f59e0b}
+#sync-chip.sync-off,#sync-chip.sync-warn{color:#991b1b;border-color:#fecaca}#sync-chip.sync-off .sync-dot,#sync-chip.sync-warn .sync-dot{background:#ef4444}
+#sync-chip.sync-local .sync-dot{background:#94a3b8}
 /* day modal */
 .day-item{
   border:1px solid var(--border-light);border-radius:10px;padding:10px 12px;
@@ -265,7 +270,7 @@ footer b{color:#d6dfef}
 @media print{
   @page{size:A4 portrait;margin:14mm 12mm}
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  header,.toolbar,.filter-row,.search-box,.row-actions,.cal-count,.empty-state,footer,.modal{display:none!important}
+  header,.toolbar,.filter-row,.search-box,.row-actions,.cal-count,.empty-state,footer,.modal,#sync-chip{display:none!important}
   .container{max-width:none;padding:0}
   .view{display:block!important}
   .view:not(.active){display:none!important}
@@ -326,7 +331,6 @@ footer b{color:#d6dfef}
       <button class="btn" onclick="openCatModal()">จัดการหมวดงาน</button>
       <button class="btn" onclick="exportData()">สำรองข้อมูล</button>
       <label class="btn" style="cursor:pointer">นำเข้า<input type="file" id="import-file" accept="application/json,.json" onchange="importData(this)" style="display:none"></label>
-      <button class="btn" onclick="openCloudModal()">☁ คลาวด์</button>
       <button class="btn" onclick="window.print()">พิมพ์ / PDF</button>
     </div>
   </div>
@@ -399,7 +403,7 @@ footer b{color:#d6dfef}
 
 <footer>
   <div><b>ระบบปฏิทินงานการฝึกและวิชาการ</b> — กก.๕ บก.กฝ.บช.ตชด.</div>
-  <div>ข้อมูลถูกเก็บในเครื่อง (localStorage) · กด "สำรองข้อมูล" เพื่อดาวน์โหลดไฟล์เก็บไว้ · กด "☁ คลาวด์" เพื่อซิงก์กับ Supabase / Google ชีต (แชร์ข้ามเครื่อง/หลายคน) (แนะนำ Supabase)</div>
+  <div><span id="foot-sync">ข้อมูลถูกเก็บในเครื่อง (localStorage)</span> · กด "สำรองข้อมูล" เพื่อดาวน์โหลดไฟล์เก็บไว้</div>
 </footer>
 
 <!-- ============ Modal: เพิ่ม/แก้ไขห้วงเวลา ============ -->
@@ -471,39 +475,6 @@ footer b{color:#d6dfef}
   </div>
 </div>
 
-<!-- ============ Modal: เชื่อมต่อคลาวด์ ============ -->
-<div class="modal" id="cloud-modal">
-  <div class="modal-box">
-    <div class="modal-head">
-      <h3>เชื่อมต่อคลาวด์ (Google ชีต)</h3>
-      <button class="m-close" onclick="closeModal('cloud-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="cloud-status" id="cloud-status">ยังไม่ได้เชื่อมต่อ</div>
-      <div class="cloud-mode-hint">รองรับ 2 แบบ — <em>Supabase</em> (แนะนำ ไม่ต้องดูแล Script) หรือ <em>Google ชีต</em> (Apps Script)
-        <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--muted);font-size:12.5px">ดูวิธีตั้งค่าแต่ละแบบ</summary>
-          <div style="margin-top:8px;font-size:12.5px;line-height:1.6">
-            <strong>• Supabase</strong> — ไปที่ <a href="เชื่อมต่อSupabase_ขั้นตอนติดตั้ง.md" target="_blank">เชื่อมต่อSupabase_ขั้นตอนติดตั้ง.md</a> คัดลอก URL + API key (บรรทัดละอย่าง) แล้วใส่ในช่องด้านล่าง
-            <br><strong>• Google ชีต</strong> — ไปที่ <a href="เชื่อมต่อGoogleชีต_ขั้นตอนติดตั้ง.md" target="_blank">เชื่อมต่อGoogleชีต_ขั้นตอนติดตั้ง.md</a> (Deploy Web App แบบ "Anyone")</div>
-        </details>
-      </div>
-      <label>URL + API key (Supabase) หรือ URL (Google ชีต)
-        <textarea id="cloud-url" rows="3" style="font-size:12px;font-family:monospace" placeholder="https://project-id.supabase.co
-abcdefghijklmnopqrstuvwxyz123456"></textarea>
-      </label>
-      <label style="flex-direction:row;align-items:center;gap:8px;font-weight:500">
-        <input type="checkbox" id="cloud-auto" style="width:auto" checked> อัปโหลดอัตโนมัติหลังบันทึกทุกครั้ง
-      </label>
-      <div class="row2" style="grid-template-columns:1fr 1fr 1fr">
-        <button class="btn" onclick="cloudTest()">ทดสอบการเชื่อมต่อ</button>
-        <button class="btn" onclick="cloudPull()">ดาวน์โหลดจากคลาวด์</button>
-        <button class="btn btn-gold" onclick="cloudPush()">อัปโหลดไปคลาวด์</button>
-      </div>
-      <div class="cat-hint"><strong>Supabase</strong> (แนะนำ) — เก็บในฐานข้อมูลคลาวด์ฟรี ไม่ต้องจัดการ Script อีกเลย เปิดจากเครื่องไหนก็เห็นข้อมูลเดียวกัน <br><strong>Google ชีต</strong> — เก็บใน Google ชีตผ่าน Apps Script เวลาแก้ Script ต้อง redeploy ครั้งใหม่</div>
-    </div>
-  </div>
-</div>
-
 <!-- ============ Modal: ดูรายการของวัน ============ -->
 <div class="modal" id="day-modal">
   <div class="modal-box">
@@ -517,6 +488,8 @@ abcdefghijklmnopqrstuvwxyz123456"></textarea>
     </div>
   </div>
 </div>
+
+<div id="sync-chip" class="sync-busy" role="status" aria-live="polite" title="สถานะการซิงก์ข้อมูล (กดเพื่อซิงก์ทันที)"><span class="sync-dot"></span><span class="sync-text">กำลังซิงก์…</span></div>
 
 <script>
 /* ================= ข้อมูลและค่าคงที่ ================= */
@@ -539,8 +512,43 @@ let curView = 'calendar';
 let calDate = new Date();
 let editingId = null;
 let dayModalDate = null;
+let editBase = null;   // สำเนารายการตอนเปิดฟอร์มแก้ไข (ใช้หาว่าผู้ใช้แก้ฟิลด์ไหนจริง)
 
-function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+/* รหัสรายการ: เวลา + เลขสุ่มจาก crypto (ชนกันข้ามเครื่องได้ยากมาก) */
+function uid(){
+  let r = '';
+  try{ const a = new Uint32Array(2); crypto.getRandomValues(a); r = a[0].toString(36) + a[1].toString(36); }catch(e){}
+  if(r.length < 8) r = Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,6);
+  return Date.now().toString(36) + r;
+}
+/* ตรวจรูปแบบข้อมูลที่รับเข้ามา (จากระบบกลาง/ไฟล์นำเข้า/เครื่อง) — ข้อมูลจากภายนอกไม่น่าเชื่อถือ */
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+function isYMD(v){ if(typeof v!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false; const d = parseYMD(v); return toYMD(d)===v; }
+function str(v, max){ return typeof v==='string' ? v.slice(0,max) : (typeof v==='number' ? String(v).slice(0,max) : ''); }
+function normEntry(d, id){
+  if(!d || typeof d!=='object') return null;
+  id = id!=null ? id : d.id;
+  if(typeof id!=='string' || !ID_RE.test(id)) return null;
+  if(!isYMD(d.startDate) || !isYMD(d.endDate)) return null;
+  const tm = v => (typeof v==='string' && /^\d{2}:\d{2}$/.test(v)) ? v : '';
+  const catId = typeof d.catId==='string' && ID_RE.test(d.catId) ? d.catId : '';
+  return { id, title:str(d.title,300), details:str(d.details,1000), startDate:d.startDate, endDate:d.endDate,
+           startTime:tm(d.startTime), endTime:tm(d.endTime), catId, by:str(d.by,120) };
+}
+function normCat(d, id){
+  if(!d || typeof d!=='object') return null;
+  id = id!=null ? id : d.id;
+  if(typeof id!=='string' || !ID_RE.test(id)) return null;
+  const name = str(d.name,60).trim();
+  if(!name) return null;
+  const c = { id, name, color: (typeof d.color==='string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(d.color)) ? d.color : '#64748b' };
+  if(typeof d.ts==='number' && isFinite(d.ts)) c.ts = d.ts;
+  return c;
+}
+function sortCats(list){
+  const rank = c => { const i = DEFAULT_CATS.findIndex(x=>x.id===c.id); return i>=0 ? [0,i,''] : [1,c.ts||0,c.id]; };
+  return list.slice().sort((a,b)=>{ const x=rank(a), y=rank(b); return x[0]-y[0] || x[1]-y[1] || (x[2]<y[2]?-1:x[2]>y[2]?1:0); });
+}
 function pad2(n){ return String(n).padStart(2,'0'); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 /* แปลงสี hex -> rgba พร้อม alpha (ใช้ทำพื้นหลังสีอ่อนของป้าย) */
@@ -580,22 +588,25 @@ function escCat(c){ return c ? esc(c.name) : 'ไม่ระบุหมวด'
 
 /* ================= เก็บ/โหลดข้อมูล ================= */
 function loadData(){
-  try{ ENTRIES = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ ENTRIES = []; }
-  if(!Array.isArray(ENTRIES)) ENTRIES = [];
-  try{ CATS = JSON.parse(localStorage.getItem(CAT_KEY)) || null; }catch(e){ CATS = null; }
-  if(!CATS || !Array.isArray(CATS) || CATS.length===0){
+  let rawE = null, rawC = null;
+  try{ rawE = JSON.parse(localStorage.getItem(STORAGE_KEY)); }catch(e){}
+  try{ rawC = JSON.parse(localStorage.getItem(CAT_KEY)); }catch(e){}
+  ENTRIES = (Array.isArray(rawE) ? rawE : []).map(x=>normEntry(x)).filter(Boolean);
+  const cats = (Array.isArray(rawC) ? rawC : []).map(x=>normCat(x)).filter(Boolean);
+  if(cats.length===0){
     CATS = DEFAULT_CATS.map(c=>({...c}));
-    saveCats();
+  } else {
+    CATS = cats;
+    // ปรับสีหมวดตั้งต้นให้เป็นชุดสีปัจจุบันครั้งเดียวต่อเครื่อง (หลังจากนั้นแก้สีเองได้และซิงก์ตามปกติ)
+    let done = false; try{ done = localStorage.getItem('cal_defcolor_v1')==='1'; }catch(e){}
+    if(!done) DEFAULT_CATS.forEach(def=>{ const c = CATS.find(x=>x.id===def.id); if(c) c.color = def.color; });
   }
-  // อัปเดตสีเริ่มต้นของหมวดตั้งต้นถ้ายังไม่ได้แก้ไข (กันไฟล์เก่ามีสีเก่า)
-  DEFAULT_CATS.forEach(def=>{
-    const c = CATS.find(x=>x.id===def.id);
-    if(c) c.color = def.color;
-  });
+  try{ localStorage.setItem('cal_defcolor_v1','1'); }catch(e){}
+  CATS = sortCats(CATS);
   saveCats();
 }
-function saveData(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(ENTRIES)); }catch(e){ alert('ไม่สามารถบันทึกข้อมูลได้ (พื้นที่เก็บข้อมูลเต็ม?)'); } }
-function saveCats(){ try{ localStorage.setItem(CAT_KEY, JSON.stringify(CATS)); }catch(e){} }
+function saveData(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(ENTRIES)); }catch(e){ alert('ไม่สามารถบันทึกข้อมูลได้ (พื้นที่เก็บข้อมูลเต็ม?)'); } CAL.onLocalChange(); }
+function saveCats(){ try{ localStorage.setItem(CAT_KEY, JSON.stringify(CATS)); }catch(e){} CAL.onLocalChange(); }
 
 /* ================= ตัวกรอง ================= */
 function activeCatFilter(){ return document.getElementById('cat-filter').value || 'all'; }
@@ -791,6 +802,7 @@ function openEntryModal(id){
   document.getElementById('entry-modal-title').textContent = id ? 'แก้ไขห้วงเวลา' : 'เพิ่มห้วงเวลา';
   fillCatSelect(document.getElementById('f-cat'), id ? (ENTRIES.find(e=>e.id===id)||{}).catId : activeCatFilter()!=='all' ? activeCatFilter() : CATS[0].id);
   const e = id ? ENTRIES.find(x=>x.id===id) : null;
+  editBase = e ? JSON.parse(JSON.stringify(e)) : null;
   const today = toYMD(new Date());
   document.getElementById('f-title').value = e ? (e.title||'') : '';
   document.getElementById('f-details').value = e ? (e.details||'') : '';
@@ -822,17 +834,21 @@ function saveEntry(){
   if(end < start) { err.textContent = 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม'; return; }
   if(start===end && et && st && et<=st){ err.textContent = 'เวลาสิ้นสุดต้องหลังเวลาเริ่ม (ถ้าอยู่ในวันเดียวกัน)'; return; }
   const rec = { title, details, startDate:start, endDate:end, startTime:st||'', endTime:et||'', catId, by };
-  if(editingId){
-    const i = ENTRIES.findIndex(x=>x.id===editingId);
-    if(i>=0) ENTRIES[i] = {...ENTRIES[i], ...rec};
+  const i = editingId ? ENTRIES.findIndex(x=>x.id===editingId) : -1;
+  if(i>=0){
+    // เปลี่ยนเฉพาะฟิลด์ที่ผู้ใช้แก้จริง (เทียบกับตอนเปิดฟอร์ม) — ไม่ทับการแก้ของคนอื่นที่เข้ามาระหว่างนั้น
+    const base = editBase || ENTRIES[i], upd = {};
+    Object.keys(rec).forEach(k=>{ if(rec[k] !== (base[k]===undefined ? '' : base[k])) upd[k] = rec[k]; });
+    ENTRIES[i] = {...ENTRIES[i], ...upd};
   } else {
+    // เพิ่มใหม่ (หรือรายการที่กำลังแก้ถูกคนอื่นลบไปแล้ว → สร้างใหม่ตามที่ผู้ใช้กดบันทึก)
+    editingId = null;
     ENTRIES.push({ id:uid(), ...rec });
   }
   saveData();
   closeModal('entry-modal');
   renderCalendar();
   renderList();
-  maybeCloudSync();
   fillRecentTitles();
 }
 function deleteEntry(id){
@@ -843,7 +859,6 @@ function deleteEntry(id){
   saveData();
   renderCalendar();
   renderList();
-  maybeCloudSync();
   fillRecentTitles();
 }
 
@@ -889,7 +904,10 @@ function openCatModal(){
   renderCatList();
   openModal('cat-modal');
 }
+let CATS_RENDERED = [], CATS_SIG = '', CATS_VALUES = {};
 function renderCatList(){
+  CATS_RENDERED = CATS.map(c=>c.id); CATS_SIG = CATS.map(c=>c.id+'|'+c.name+'|'+c.color).join(';');
+  CATS_VALUES = {}; CATS.forEach(c=>{ CATS_VALUES[c.id] = { name:c.name, color:c.color }; });
   document.getElementById('cat-list').innerHTML = CATS.map((c,i)=>`
     <div class="cat-row">
       <input type="color" id="cat-color-${c.id}" value="${c.color}">
@@ -909,7 +927,6 @@ function saveCat(id){
   fillCatSelect(document.getElementById('f-cat'), document.getElementById('f-cat').value);
   renderCatList();
   renderCalendar(); renderList();
-  maybeCloudSync();
 }
 function removeCat(id){
   if(CATS.length<=1){ alert('ต้องมีหมวดงานอย่างน้อย 1 หมวด'); return; }
@@ -924,20 +941,19 @@ function removeCat(id){
   fillCatSelect(document.getElementById('f-cat'), activeCatFilter());
   renderCatList();
   renderCalendar(); renderList();
-  maybeCloudSync();
   fillRecentTitles();
 }
 function addCategory(){
   const name = document.getElementById('new-cat-name').value.trim();
   const color = document.getElementById('new-cat-color').value;
   if(!name){ alert('กรอกชื่อหมวดงานใหม่ก่อน'); return; }
-  CATS.push({ id:'c-'+uid(), name, color });
+  CATS.push({ id:'c-'+uid(), name, color, ts:Date.now() });
+  CATS = sortCats(CATS);
   saveCats();
   document.getElementById('new-cat-name').value = '';
   fillCatSelect(document.getElementById('f-cat'), activeCatFilter());
   renderCatList();
   renderCalendar(); renderList();
-  maybeCloudSync();
 }
 
 /* ================= สำรอง / นำเข้า ================= */
@@ -952,32 +968,95 @@ function exportData(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-function importData(file){
+/* นำเข้า: เลือกได้ 3 ทาง — รวมข้อมูล / แทนที่ทั้งหมด / ยกเลิก (แทนที่ขณะเชื่อมระบบกลางต้องพิมพ์ "ลบทั้งหมด" ยืนยัน) */
+function importChoice(n){
+  return new Promise(resolve=>{
+    const old = document.getElementById('import-choice-modal'); if(old) old.remove();
+    const sync = CAL.enabled();
+    const m = document.createElement('div');
+    m.className = 'modal open'; m.id = 'import-choice-modal';
+    m.innerHTML = `<div class="modal-box"><div class="modal-head"><h3>นำเข้าข้อมูลจากไฟล์</h3></div>
+      <div class="modal-body">
+        <div>พบ <b>${Number(n)||0}</b> ห้วงเวลาในไฟล์</div>
+        <div class="cat-hint"><b>รวมข้อมูล</b> — เพิ่มเฉพาะรายการ/หมวดที่ยังไม่มี ไม่แก้และไม่ลบของเดิม (รายการที่มีอยู่แล้วจะถูกข้าม)</div>
+        <div class="cat-hint"><b>แทนที่ทั้งหมด</b> — ใช้ข้อมูลในไฟล์แทนทั้งหมด รายการที่ไม่อยู่ในไฟล์จะถูกลบ${sync?' <b>และจะลบข้อมูลของทุกคนบนระบบกลางด้วย</b>':' (เฉพาะในเครื่องนี้)'}</div>
+        <div id="imp-confirm-box" style="display:none;margin-top:10px">
+          <div class="err" style="display:block">⚠ การแทนที่จะลบรายการและหมวดที่ไม่อยู่ในไฟล์ออกจากระบบกลาง ทุกคนที่เปิดปฏิทินจะไม่เห็นรายการเหล่านั้นอีก และย้อนกลับไม่ได้</div>
+          <label>พิมพ์ <b>ลบทั้งหมด</b> เพื่อยืนยัน<input type="text" id="imp-word" autocomplete="off"></label>
+          <button class="btn btn-danger" id="imp-replace-go" disabled style="margin-top:8px">ยืนยันแทนที่ทั้งหมด</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="imp-cancel">ยกเลิก</button>
+        <button class="btn btn-danger" id="imp-replace">แทนที่ทั้งหมด</button>
+        <button class="btn btn-gold" id="imp-merge">รวมข้อมูล</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    const q = id => m.querySelector(id);
+    const onKey = e=>{ if(e.key==='Escape') done('cancel'); };
+    const done = v=>{ document.removeEventListener('keydown', onKey); m.remove(); resolve(v); };
+    document.addEventListener('keydown', onKey);
+    m.addEventListener('click', e=>{ if(e.target===m) done('cancel'); });
+    q('#imp-cancel').onclick = ()=>done('cancel');
+    q('#imp-merge').onclick = ()=>done('merge');
+    q('#imp-replace').onclick = ()=>{ if(!sync) return done('replace'); q('#imp-confirm-box').style.display='block'; q('#imp-word').focus(); };
+    q('#imp-word').oninput = ()=>{ q('#imp-replace-go').disabled = q('#imp-word').value.trim() !== 'ลบทั้งหมด'; };
+    q('#imp-replace-go').onclick = ()=>{ if(q('#imp-word').value.trim()==='ลบทั้งหมด') done('replace'); };
+  });
+}
+function applyImport(data, mode){
+  const curCatIds = new Set(CATS.map(c=>c.id));
+  const inCats = Array.isArray(data.categories) ? data.categories.map(x=>normCat(x)).filter(Boolean) : [];
+  const catMap = {}, newCats = [], seenC = new Set();
+  inCats.forEach(c=>{
+    if(seenC.has(c.id)) return; seenC.add(c.id);
+    if(curCatIds.has(c.id)){ catMap[c.id] = c.id; if(mode==='replace') newCats.push(c); }       // รวมข้อมูล: หมวดที่มีอยู่แล้วไม่แตะต้อง
+    else { const nid = 'c-'+uid(); catMap[c.id] = nid; newCats.push({...c, id:nid, ts:c.ts||Date.now()}); }   // id ที่ไม่มีอยู่ (อาจถูกลบไปแล้ว) → id ใหม่
+  });
+  if(mode==='replace'){ if(inCats.length) CATS = sortCats(newCats); }
+  else CATS = sortCats(CATS.concat(newCats));
+  const catOk = new Set(CATS.map(c=>c.id));
+  const known = new Set(ENTRIES.map(e=>e.id));
+  if(mode==='merge') CAL.knownIds().forEach(id=>known.add(id));
+  const seen = new Set(), list = [];
+  let skipped = 0, invalid = 0;
+  data.entries.forEach(x=>{
+    const id = x && typeof x.id==='string' && ID_RE.test(x.id) ? x.id : null;
+    if(id && seen.has(id)){ skipped++; return; }
+    if(id) seen.add(id);
+    if(mode==='merge' && id && known.has(id)){ skipped++; return; }          // มีอยู่แล้ว (ในเครื่อง/ระบบกลาง) → ข้าม
+    const keepId = mode==='replace' && id && known.has(id);                   // แทนที่: รายการที่ยังอยู่คงรหัสเดิม ที่เหลือใช้รหัสใหม่
+    const n = normEntry(x, keepId ? id : uid());
+    if(!n){ invalid++; return; }
+    const cid = catMap[n.catId] || n.catId;
+    n.catId = catOk.has(cid) ? cid : CATS[0].id;
+    list.push(n);
+  });
+  ENTRIES = mode==='replace' ? list : ENTRIES.concat(list);
+  return { added:list.length, skipped, invalid };
+}
+function importData(input){
+  const file = input && input.files ? input.files[0] : input;
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try{
       const data = JSON.parse(ev.target.result);
       if(!Array.isArray(data.entries)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
-      const replace = confirm(`พบ ${data.entries.length} ห้วงเวลาในไฟล์\n\nกด "ตกลง" = แทนที่ข้อมูลทั้งหมดที่มีอยู่\nกด "ยกเลิก" = รวมเข้ากับข้อมูลเดิม (ไม่ลบของเดิม)`);
-      if(replace){
-        ENTRIES = data.entries;
-      } else {
-        const existingIds = new Set(ENTRIES.map(e=>e.id));
-        data.entries.forEach(e=> existingIds.has(e.id) ? ENTRIES.push({...e, id:uid()}) : ENTRIES.push(e));
-      }
-      if(Array.isArray(data.categories) && data.categories.length) CATS = data.categories;
+      const mode = await importChoice(data.entries.length);
+      if(mode==='cancel') return;
+      const r = applyImport(data, mode);
       saveData(); saveCats();
       fillCatSelect(document.getElementById('f-cat'), activeCatFilter());
       renderCatSelect();
       renderCalendar(); renderList();
-      alert('นำเข้าข้อมูลสำเร็จ');
+      alert(`นำเข้าข้อมูลสำเร็จ — เพิ่ม ${r.added} รายการ` + (r.skipped?` · ข้าม ${r.skipped} รายการที่มีอยู่แล้ว`:'') + (r.invalid?` · ข้อมูลไม่ถูกต้อง ${r.invalid} รายการ`:''));
     }catch(err){
       alert('ไม่สามารถอ่านไฟล์นี้ได้: ' + err.message);
     }
   };
   reader.readAsText(file);
-  file.value = '';
+  if(input && 'value' in input) input.value = '';
 }
 function renderCatSelect(){
   const sel = document.getElementById('cat-filter');
@@ -986,142 +1065,294 @@ function renderCatSelect(){
   sel.value = CATS.some(c=>c.id===cur) ? cur : 'all';
 }
 
-/* ================= คลาวด์ (Supabase / Google Apps Script) ================= */
-// รองรับ 2 โหมด:
-// • Supabase (แนะนำ) — ใส่ URL + API key ของ Supabase ในช่อง cloud-url (แบ่งเป็นบรรทัด 2 บรรทัด: บรรทัดแรก URL บรรทัดที่สอง key)
-// • Google Apps Script — ใส่ Web App URL ในช่อง cloud-url ทั้งหมด
-const CLOUD_KEY='cloudUrl', CLOUD_AUTO='cloudAuto';
-function cloudUrl(){ return localStorage.getItem(CLOUD_KEY)||''; }
-function cloudAutoOn(){ return localStorage.getItem(CLOUD_AUTO)!=='0'; }
-function openCloudModal(){
-  document.getElementById('cloud-url').value = cloudUrl();
-  document.getElementById('cloud-auto').checked = cloudAutoOn();
-  updateCloudStatus();
-  openModal('cloud-modal');
-}
-function updateCloudStatus(msg){
-  const el = document.getElementById('cloud-status');
-  if(!el) return;
-  if(msg){ el.textContent = msg; el.style.background = (msg.indexOf('✅')>=0 || msg.indexOf('✔')>=0) ? '#ecfdf5' : '#fef2f2'; }
-  else{
-    const url = cloudUrl();
-    const ok = !!url;
-    let note = ok ? 'เชื่อมต่อแล้ว — ข้อมูลจะซิงก์กันทุกเครื่อง' : 'ยังไม่ได้เชื่อมต่อ — ข้อมูลเก็บเฉพาะในเครื่องนี้';
-    if(ok && url.includes('supabase.co')) note = 'เชื่อมต่อแล้ว (Supabase) — ข้อมูลจะซิงก์กันทุกเครื่อง';
-    else if(ok && url.includes('script.google.com')) note = 'เชื่อมต่อแล้ว (Google ชีต) — ข้อมูลจะซิงก์กันทุกเครื่อง';
-    el.textContent = ok ? '✅ '+note : 'ยังไม่ได้เชื่อมต่อ — ข้อมูลเก็บเฉพาะในเครื่องนี้';
-    el.style.background = ok ? '#ecfdf5' : '#f1f5f9';
+/* ================= ซิงก์ข้อมูลกลาง (Google Apps Script + Google ชีต) ================= */
+// ทุกคนที่เปิดหน้านี้เห็นและแก้ข้อมูลชุดเดียวกัน — ไม่ต้องใช้รหัส (ใครมีลิงก์ก็แก้ได้)
+//  - บันทึกลงเครื่องทันที แล้วส่งขึ้นระบบกลางเฉพาะรายการที่เปลี่ยน (centry = ห้วงเวลา, ccat = หมวดงาน)
+//  - ออฟไลน์ใช้งานได้: คิวรอส่งเก็บใน localStorage แล้วส่งใหม่เมื่อมีเน็ต
+//  - ดึงข้อมูลกลางตอนเปิดหน้า ทุก 30 วินาที และเมื่อกลับมาที่หน้านี้
+//  - ถ้า CAL_SYNC_URL ว่าง = ทำงานแบบเก็บเฉพาะในเครื่องนี้
+const CAL_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyTx6m8I_gb5N4zbPU9DQNcoRHVhaQwB8xGn7ovU6iTYy0qkEGPXLU3jrJ_8p2kHhqj/exec';
+
+const CAL = (function(){
+  const STATE_KEY = 'cal_sync_state_v1';
+  const POLL_MS = 30000, TIMEOUT = 30000, BATCH = 200;
+  let state = load();
+  let running = 0, lastError = '', errKind = '', chain = Promise.resolve(), saveFailed = false;
+  let applying = false, fails = 0, retryTimer = null, flushTimer = null, pullP = null, flightMax = 0, lastOk = state.lastOk || 0;
+
+  function enabled(){ return !!(CAL_SYNC_URL && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:\/])/.test(CAL_SYNC_URL)); }
+  function load(){
+    try{ const s = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); if(s && s.snap){ s.queue = s.queue || []; s.seq = s.seq || 0; s.snap.centry = s.snap.centry || {}; s.snap.ccat = s.snap.ccat || {}; s.rejected = s.rejected || {}; return s; } }catch(e){}
+    return { snap:{ centry:{}, ccat:{} }, queue:[], seq:0, lastPull:0, migrated:false, lastOk:0, rejected:{} };
+  }
+  // ถ้าบันทึกลงเครื่องไม่ได้ (พื้นที่เต็ม) ให้ใช้คิวในหน่วยความจำต่อ ไม่โหลดทับ
+  function fresh(){ if(saveFailed) return; state = load(); }
+  function save(){ try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); saveFailed = false; }catch(e){ saveFailed = true; } }
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
+
+  /* ---------- คิว ---------- */
+  function enqueue(op){
+    op.seq = ++state.seq;
+    if(!op.deleted){
+      // รวมกับ op ล่าสุดของรายการเดียวกันที่ยังไม่ถูกส่ง (ลดจำนวน op)
+      for(let i = state.queue.length - 1; i >= 0; i--){
+        const q = state.queue[i];
+        if(q.kind !== op.kind || q.key !== op.key) continue;
+        if(q.deleted || q.seq <= flightMax) break;
+        if(!q.fields){ q.data = op.data; return; }
+        if(op.fields){ q.fields = Array.from(new Set(q.fields.concat(op.fields))); q.data = op.data; return; }
+        break;
+      }
+    }
+    state.queue.push(op);
+  }
+  function changedFields(a, b){
+    const ks = new Set(Object.keys(a).concat(Object.keys(b)));
+    return Array.from(ks).filter(k => !same(a[k], b[k]));
+  }
+  // เทียบข้อมูลในเครื่องกับสแนปช็อต (สิ่งที่ระบบกลางมี) → สร้าง op เฉพาะรายการที่เปลี่ยน
+  function diffKind(kind, list){
+    const snap = state.snap[kind] || (state.snap[kind] = {});
+    const cur = {};
+    list.forEach(x => { cur[x.id] = x; });
+    Object.keys(cur).forEach(k => {
+      const s = snap[k], c = cur[k];
+      if(!s) enqueue({ kind, key:k, data:clone(c) });
+      else if(!same(s, c)) enqueue({ kind, key:k, data:clone(c), fields:changedFields(s, c) });
+      else return;
+      delete state.rejected[kind + '|' + k];     // แก้ใหม่ → ให้ลองส่งอีกครั้ง
+      snap[k] = clone(c);
+    });
+    Object.keys(snap).forEach(k => { if(!cur[k]){ enqueue({ kind, key:k, deleted:true }); delete snap[k]; delete state.rejected[kind + '|' + k]; } });
+  }
+  // เรียกทุกครั้งที่หน้าเว็บบันทึกข้อมูลลงเครื่อง
+  function onLocalChange(){
+    if(applying || !enabled()) return;
+    fresh();
+    if(!state.lastPull){ badge(); return; }   // ยังไม่เคยดึงข้อมูลกลาง — ให้ขั้นย้ายข้อมูลครั้งแรกจัดการ
+    diffKind('centry', ENTRIES);
+    diffKind('ccat', CATS);
+    save(); badge();
+    scheduleFlush(150);
+  }
+  function scheduleFlush(ms){ clearTimeout(flushTimer); flushTimer = setTimeout(flush, ms); }
+
+  /* ---------- เครือข่าย ---------- */
+  function req(url, init){
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const t = ctl ? setTimeout(() => ctl.abort(), TIMEOUT) : null;
+    init = init || {}; if(ctl) init.signal = ctl.signal;
+    const bad = msg => { const e = new Error(msg); e.kind = 'server'; return e; };
+    return fetch(url, init).then(r => r.json().catch(() => { throw bad('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ'); }))
+      .then(j => { if(t) clearTimeout(t); if(!j || !j.ok) throw bad((j && j.error) || 'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ'); return j; },
+            e => { if(t) clearTimeout(t); if(!e.kind) e.kind = 'net'; throw e; });
+  }
+  function post(body){ return req(CAL_SYNC_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); }
+  function serial(fn){
+    running++; badge();
+    const p = chain.then(fn).then(v => { fails = 0; lastError = ''; errKind = ''; return v; },
+      e => { lastError = String((e && e.message) || e); errKind = (e && e.kind) || 'net'; fails++; scheduleRetry(); return undefined; })
+      .then(v => { running--; badge(); return v; });
+    chain = p.then(() => {}, () => {});
+    return p;
+  }
+  // ลองใหม่แบบ exponential backoff (2, 4, 8, 16, 32, 60 วินาที)
+  function scheduleRetry(){
+    clearTimeout(retryTimer);
+    const delay = Math.min(60000, 2000 * Math.pow(2, Math.min(fails, 5))) + Math.floor(Math.random() * 500);
+    retryTimer = setTimeout(() => { fresh(); if(state.lastPull && state.queue.length) flush(); else pull(); }, delay);
+  }
+  function syncNow(){ return enabled() ? pull() : Promise.resolve(false); }
+
+  function flush(){
+    if(!enabled()) return Promise.resolve();
+    return serial(async function more(){
+      fresh();
+      if(!state.lastPull || !state.queue.length) return;
+      const batch = state.queue.slice(0, BATCH);
+      flightMax = batch[batch.length - 1].seq;
+      let j;
+      try{
+        j = await post({ action:'apply', ops: batch.map(o => { const x = { kind:o.kind, key:o.key }; if(o.deleted) x.deleted = true; else { x.data = o.data; if(o.fields) x.fields = o.fields; } return x; }) });
+      } finally { flightMax = 0; }
+      fresh();
+      const sent = {}; batch.forEach(o => { sent[o.seq] = 1; });
+      state.queue = state.queue.filter(o => !sent[o.seq]);
+      // รายการที่ระบบกลางไม่รับ: ไม่ส่งซ้ำอัตโนมัติ — จดไว้แสดงที่ชิป (ส่งใหม่เมื่อผู้ใช้แก้รายการนั้น)
+      (j.rejected || []).forEach(r => { if(r && r.kind && r.key != null) state.rejected[r.kind + '|' + r.key] = r.reason || 'invalid'; });
+      state.lastOk = lastOk = Date.now();
+      save();
+      if(state.queue.length) return more();
+    });
+  }
+
+  /* ---------- ดึงข้อมูลกลางและรวมกับข้อมูลในเครื่อง ---------- */
+  function pull(){
+    if(!enabled()) return Promise.resolve(false);
+    if(pullP) return pullP;
+    pullP = serial(async function(){
+      const j = await req(CAL_SYNC_URL + (CAL_SYNC_URL.indexOf('?') === -1 ? '?' : '&') + 'action=all&kinds=centry,ccat&withDeleted=1&t=' + Date.now());
+      fresh();
+      const changed = applyRemote(j);
+      state.lastPull = Date.now(); state.lastOk = lastOk = state.lastPull;
+      save();
+      if(changed) refreshAfterRemote();
+      if(state.queue.length) scheduleFlush(0);
+      return true;
+    }).then(v => { pullP = null; return v; });
+    return pullP;
+  }
+
+  function applyRemote(j){
+    const srv = { centry:{}, ccat:{} }, del = {};
+    (j.records || []).forEach(r => { if(r && srv[r.kind] && typeof r.key === 'string') srv[r.kind][r.key] = r.data; });
+    (j.deleted || []).forEach(d => { if(d) del[d.kind + '|' + d.key] = 1; });
+    const pend = {};
+    state.queue.forEach(op => {
+      const k = op.kind + '|' + op.key, p = pend[k] || (pend[k] = { fields:{}, all:false, del:false });
+      if(op.deleted) p.del = true;
+      else { p.del = false; if(op.fields) op.fields.forEach(f => { p.fields[f] = 1; }); else p.all = true; }
+    });
+    const upload = [];
+    const before = JSON.stringify([ENTRIES, CATS]);
+    function merge(kind, local, norm){
+      const byId = new Map(local.map(x => [x.id, x]));
+      const out = [], seen = new Set();
+      Object.keys(srv[kind]).forEach(key => {
+        const p = pend[kind + '|' + key];
+        if(p && p.del) return;                              // เครื่องนี้ลบไว้ รอส่ง — ไม่ให้กลับมา
+        const rs = norm(srv[kind][key], key);
+        if(!rs) return;                                     // ข้อมูลไม่ถูกรูปแบบ — ข้าม
+        const loc = byId.get(key);
+        if(p && loc){                                       // การแก้ที่ยังรอส่งชนะข้อมูลกลาง
+          if(p.all){ out.push(clone(loc)); seen.add(key); return; }
+          Object.keys(p.fields).forEach(f => { if(Object.prototype.hasOwnProperty.call(loc, f)) rs[f] = clone(loc[f]); else delete rs[f]; });
+        }
+        out.push(rs); seen.add(key);
+      });
+      local.forEach(loc => {
+        if(seen.has(loc.id)) return;
+        const k = kind + '|' + loc.id;
+        if(del[k]){ state.queue = state.queue.filter(o => !(o.kind === kind && o.key === loc.id)); return; }   // ถูกลบแล้ว — ไม่ส่งกลับขึ้น
+        out.push(loc);
+        if(!pend[k] && !state.rejected[k]) upload.push({ kind, key:loc.id, data:clone(loc) });   // ยังไม่มีในระบบกลาง (ย้ายข้อมูลครั้งแรก/ซ่อมแซม)
+      });
+      return out;
+    }
+    let nc = merge('ccat', CATS, normCat);
+    if(!nc.length){
+      const c = { id:'c-' + uid(), name:'งานทั่วไป', color:'#64748b', ts:Date.now() };
+      nc = [c]; upload.push({ kind:'ccat', key:c.id, data:clone(c) });
+    }
+    CATS = sortCats(nc);
+    ENTRIES = merge('centry', ENTRIES, normEntry);
+    upload.forEach(op => enqueue(op));
+    // รายการที่อ้างหมวดที่ไม่มีแล้ว (เช่น ถูกลบจากเครื่องอื่น) → ย้ายไปหมวดแรก และส่งเฉพาะฟิลด์ catId (ทุกเครื่องได้ค่าเดียวกัน)
+    const catIds = new Set(CATS.map(c => c.id));
+    ENTRIES.forEach(e => { if(!catIds.has(e.catId)){ e.catId = CATS[0].id; enqueue({ kind:'centry', key:e.id, data:clone(e), fields:['catId'] }); } });
+    Object.keys(state.rejected).forEach(k => {
+      const i = k.indexOf('|'), kind = k.slice(0, i), key = k.slice(i + 1);
+      const here = (kind === 'centry' ? ENTRIES : CATS).some(x => x.id === key);
+      if(!here || (srv[kind] && Object.prototype.hasOwnProperty.call(srv[kind], key))) delete state.rejected[k];
+    });
+    state.snap.centry = {}; state.snap.ccat = {};
+    ENTRIES.forEach(e => { state.snap.centry[e.id] = clone(e); });
+    CATS.forEach(c => { state.snap.ccat[c.id] = clone(c); });
+    state.migrated = true;
+    applying = true;
+    try{ saveData(); saveCats(); } finally { applying = false; }
+    return JSON.stringify([ENTRIES, CATS]) !== before;
+  }
+
+  /* ---------- สถานะ ---------- */
+  function pendingCount(){ return state.lastPull ? state.queue.length : ENTRIES.length + CATS.length; }
+  function statusInfo(){
+    if(!enabled()) return { cls:'local', text:'โหมดในเครื่อง — ยังไม่ได้เชื่อมระบบกลาง' };
+    if(saveFailed) return { cls:'warn', text:'⚠ พื้นที่เก็บข้อมูลในเครื่องเต็ม — บันทึกคิวลงเครื่องไม่ได้ (ยังส่งจากหน่วยความจำ)' };
+    const q = pendingCount();
+    const offline = (typeof navigator !== 'undefined' && navigator.onLine === false) || (lastError && errKind === 'net');
+    if(offline) return { cls:'off', text: q ? 'ออฟไลน์ — จะส่งเมื่อมีเน็ต (' + q + ' รายการ)' : 'ออฟไลน์ — แสดงข้อมูลที่เก็บในเครื่อง' };
+    if(lastError) return { cls:'warn', text:'ซิงก์ไม่สำเร็จ — จะลองใหม่' + (q ? ' (' + q + ' รายการ)' : '') };
+    const rj = Object.keys(state.rejected || {}).map(k => state.rejected[k]);
+    if(rj.length){
+      const why = rj.indexOf('limit') >= 0 ? 'เกินจำนวนสูงสุดของระบบกลาง' : rj.indexOf('too large') >= 0 ? 'ข้อมูลใหญ่เกินไป' : 'สคริปต์ระบบกลางอาจยังไม่อัปเดต';
+      return { cls:'warn', text:'ระบบกลางไม่รับ ' + rj.length + ' รายการ — ' + why + ' (ข้อมูลยังอยู่ในเครื่องนี้)' };
+    }
+    if(running && (q || !state.lastPull)) return { cls:'busy', text: state.lastPull ? 'กำลังบันทึก…' : 'กำลังซิงก์…' };
+    if(q) return { cls:'busy', text:'กำลังบันทึก…' };
+    if(!lastOk) return { cls:'busy', text:'กำลังซิงก์…' };
+    const d = new Date(lastOk);
+    return { cls:'on', text:'ออนไลน์ · ซิงก์แล้ว ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) };
+  }
+  function badge(){
+    const el = document.getElementById('sync-chip'); if(!el) return;
+    const s = statusInfo();
+    el.className = 'sync-' + s.cls;
+    const t = el.querySelector('.sync-text'); if(t) t.textContent = s.text;
+    const f = document.getElementById('foot-sync');
+    if(f) f.textContent = enabled()
+      ? 'ข้อมูลซิงก์กับระบบกลาง (Google ชีต) — ทุกคนที่เปิดหน้านี้เห็นและแก้ไขข้อมูลชุดเดียวกัน และเก็บสำเนาไว้ในเครื่อง (localStorage) ใช้งานออฟไลน์ได้'
+      : 'ข้อมูลถูกเก็บในเครื่องนี้เท่านั้น (localStorage) — ยังไม่ได้เชื่อมระบบกลาง';
+  }
+
+  function start(){
+    badge();
+    if(!enabled()) return;
+    window.addEventListener('online', () => { fails = 0; syncNow(); });
+    window.addEventListener('offline', badge);
+    window.addEventListener('focus', () => { syncNow(); });
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) syncNow(); });
+    setInterval(() => { if(!document.hidden) syncNow(); }, POLL_MS);
+    const chip = document.getElementById('sync-chip');
+    if(chip) chip.addEventListener('click', () => { fails = 0; syncNow(); });
+    syncNow();
+  }
+  function knownIds(){ fresh(); return Object.keys(state.snap.centry); }
+  return { enabled, knownIds, onLocalChange, pull, flush, syncNow, start, badge, _state: () => state };
+})();
+
+/* หลังดึงข้อมูลกลางแล้วข้อมูลเปลี่ยน: วาดใหม่โดยไม่ปิดหน้าต่างที่เปิดอยู่และไม่ทับสิ่งที่ผู้ใช้กำลังพิมพ์ */
+function refreshAfterRemote(){
+  const entryOpen = document.getElementById('entry-modal').classList.contains('open');
+  const fcat = document.getElementById('f-cat');
+  fillCatSelect(fcat, fcat.value);
+  renderCatSelect();
+  renderCalendar(); renderList();
+  if(document.getElementById('day-modal').classList.contains('open') && dayModalDate) openDayModal(dayModalDate);
+  if(document.getElementById('cat-modal').classList.contains('open')) refreshCatListKeepTyping();
+  if(!entryOpen){ fillRecentTitles(); fillRecentTimes(); }
+  else if(editingId && !ENTRIES.some(e=>e.id===editingId)){
+    document.getElementById('form-err').textContent = 'รายการนี้ถูกลบโดยผู้อื่นแล้ว — ถ้ากดบันทึกจะสร้างเป็นรายการใหม่';
   }
 }
-function saveCloudSettings(){
-  localStorage.setItem(CLOUD_KEY, document.getElementById('cloud-url').value.trim());
-  localStorage.setItem(CLOUD_AUTO, document.getElementById('cloud-auto').checked ? '1' : '0');
-  updateCloudStatus();
-}
-// ตรวจว่า URL เป็น Supabase หรือ Google Apps Script
-function isSupabase(url){
-  return !!(url && url.includes('supabase.co'));
-}
-function parseSupabaseConfig(raw){
-  // รองรับ 2 รูปแบบ:
-  // รูปแบบ 1: 2 บรรทัด — บรรทัดแรก URL บรรทัดที่สอง key
-  // รูปแบบ 2: บรรทัดเดียว URL และมี key ในช่องเริ่มต้นด้วย "key:"
-  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(lines.length>=2) return { url:lines[0], key:lines[1] };
-  const m = raw.match(/^(https?:\/\/[^\s]+?)\s+(?::key\s*)?([a-z0-9_-]{20,})$/i);
-  if(m) return { url:m[1], key:m[2] };
-  return null;
-}
-async function supabaseFetch(opts){
-  const { url, key } = opts;
-  const pathUrl = url.replace(/\/+$/,'') + '/rest/v1/' + (opts.path||'').replace(/^\/+/,'');
-  const res = await fetch(pathUrl, {
-    method: opts.method || 'GET',
-    headers: {
-      'apikey': key,
-      'Authorization': 'Bearer '+key,
-      'Content-Type': 'application/json',
-      ...(opts.method && opts.method!=='GET' ? {'Prefer':'return=representation'} : {})
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined
+function refreshCatListKeepTyping(){
+  const typed = {};
+  CATS_RENDERED.forEach(id=>{
+    const n = document.getElementById('cat-name-'+id), c = document.getElementById('cat-color-'+id);
+    if(n && c) typed[id] = { name:n.value, color:c.value };
   });
-  if(res.status===404 && opts.method==='GET') return null;
-  if(!res.ok) throw new Error(opts.method+' '+res.status+' '+res.statusText);
-  return res.json();
+  const sig = CATS.map(c=>c.id+'|'+c.name+'|'+c.color).join(';');
+  if(sig === CATS_SIG) return;
+  renderCatList();
+  Object.keys(typed).forEach(id=>{
+    const n = document.getElementById('cat-name-'+id), c = document.getElementById('cat-color-'+id);
+    if(!n || !c) return;
+    const old = CATS_VALUES[id];
+    if(old && typed[id].name !== old.name) n.value = typed[id].name;
+    if(old && typed[id].color !== old.color) c.value = typed[id].color;
+  });
 }
-async function cloudFetch(url, body){
-  if(isSupabase(url)){
-    const cfg = parseSupabaseConfig(url);
-    if(!cfg || !cfg.key) throw new Error('URL Supabase ไม่สมบูรณ์ — ใส่ URL และ API key (บรรทัดละอย่าง)');
-    if(body){
-      // POST = อัปโหลด: upsert into calendar_app (on-conflict: id)
-      const res = await supabaseFetch({ url:cfg.url, key:cfg.key, path:'calendar_app', method:'POST', body:{ id:'calendar_root', app:'ปฏิทินงานการฝึกและวิชาการ', syncedAt:new Date().toISOString(), categories:CATS, entries:ENTRIES } });
-      return res;
-    }
-    // GET = ดึงข้อมูล: select * from calendar_app order by created_at desc limit 1
-    const rows = await supabaseFetch({ url:cfg.url, key:cfg.key, path:'calendar_app?order=created_at.desc&limit=1' });
-    if(!rows || !rows.length) return { entries:[] };
-    return rows[0];
+window.addEventListener('storage', ev=>{
+  // แท็บอื่นในเครื่องเดียวกันแก้ข้อมูล → โหลดใหม่ให้ตรงกัน
+  if(ev.key===STORAGE_KEY || ev.key===CAT_KEY){
+    try{
+      ENTRIES = (JSON.parse(localStorage.getItem(STORAGE_KEY))||[]).map(x=>normEntry(x)).filter(Boolean);
+      CATS = sortCats((JSON.parse(localStorage.getItem(CAT_KEY))||[]).map(x=>normCat(x)).filter(Boolean));
+      refreshAfterRemote();
+    }catch(e){}
   }
-  // Google Apps Script (เดิม)
-  const opt = body ? {method:'POST', body, headers:{'Content-Type':'text/plain;charset=utf-8'}} : {method:'GET'};
-  const res = await fetch(url, opt);
-  if(!res.ok) throw new Error('เซิร์ฟเวอร์ตอบกลับ HTTP '+res.status);
-  return res.json();
-}
-async function cloudTest(){
-  const url = document.getElementById('cloud-url').value.trim();
-  if(!url){ alert('กรุณาใส่ URL ก่อน'); return; }
-  try{
-    updateCloudStatus('กำลังทดสอบการเชื่อมต่อ…');
-    if(isSupabase(url)){
-      const cfg = parseSupabaseConfig(url);
-      if(!cfg || !cfg.key) throw new Error('URL Supabase ไม่สมบูรณ์ — ใส่ URL และ API key (บรรทัดละอย่าง)');
-      await supabaseFetch({ url:cfg.url, key:cfg.key, path:'calendar_app?limit=0' }); // ทดสอบแค่เช็คว่าตารางมีอยู่
-    } else {
-      await cloudFetch(url);
-    }
-    saveCloudSettings();
-    updateCloudStatus('✅ เชื่อมต่อสำเร็จ');
-    alert('เชื่อมต่อคลาวด์สำเร็จ — ข้อมูลจะซิงก์กันทุกเครื่อง');
-  }catch(e){
-    let hint = '\n\nตรวจสอบว่า\n1. ใส่ URL และ API key ถูกต้อง\n2. เปิดสิทธิ์ RLS ทั้งอ่าน (SELECT) และเขียน (INSERT/UPDATE/DELETE) แล้ว\n3. อินเทอร์เน็ตใช้งานได้';
-    if(isSupabase(url)) hint = '\n\nตรวจสอบว่า\n1. ใส่ URL และ API key ถูกต้อง (บรรทัดละอย่าง) หรือต่อกันด้วย \n2. เปิดสิทธิ์ RLS ทั้งอ่าน (SELECT) และเขียน (INSERT/UPDATE/DELETE) แล้ว\n3. อินเทอร์เน็ตใช้งานได้';
-    updateCloudStatus('❌ เชื่อมต่อไม่ได้: '+e.message);
-    alert('เชื่อมต่อไม่ได้: '+e.message+hint);
-  }
-}
-async function cloudPush(){
-  const url = cloudUrl();
-  if(!url){ alert('ยังไม่ได้เชื่อมต่อคลาวด์ — กด "☁ คลาวด์" แล้วใส่ URL ก่อน'); return; }
-  try{
-    updateCloudStatus('กำลังอัปโหลด…');
-    await cloudFetch(url, JSON.stringify({ app:'ปฏิทินงานการฝึกและวิชาการ', syncedAt:new Date().toISOString(), categories:CATS, entries:ENTRIES }));
-    updateCloudStatus('✅ อัปโหลดสำเร็จ '+fmtFull(toYMD(new Date())));
-  }catch(e){ updateCloudStatus('❌ อัปโหลดไม่สำเร็จ: '+e.message); alert('อัปโหลดไม่สำเร็จ: '+e.message); }
-}
-async function cloudPull(){
-  const url = cloudUrl();
-  if(!url){ alert('ยังไม่ได้เชื่อมต่อคลาวด์'); return; }
-  try{
-    updateCloudStatus('กำลังดาวน์โหลด…');
-    const data = await cloudFetch(url);
-    if(!data || (!Array.isArray(data.entries) && !data.entries)) throw new Error('ข้อมูลในคลาวด์ยังว่างเปล่า — กด "อัปโหลดไปคลาวด์" ก่อน');
-    const entries = Array.isArray(data.entries) ? data.entries : [];
-    const cats = Array.isArray(data.categories) ? data.categories : CATS;
-    const byId = new Map(); ENTRIES.forEach(e=>byId.set(e.id, e)); entries.forEach(e=>byId.set(e.id, e));
-    ENTRIES = [...byId.values()];
-    const cById = new Map(); CATS.forEach(c=>cById.set(c.id, c)); cats.forEach(c=>cById.set(c.id, c));
-    CATS = [...cById.values()];
-    saveData(); saveCats();
-    fillCatSelect(document.getElementById('f-cat'), activeCatFilter());
-    renderCatSelect(); renderCalendar(); renderList();
-    updateCloudStatus('✅ ดาวน์โหลดสำเร็จ — มี '+thaiDigits(ENTRIES.length)+' ห้วงเวลา');
-  }catch(e){ updateCloudStatus('❌ ดาวน์โหลดไม่สำเร็จ: '+e.message); alert('ดาวน์โหลดไม่สำเร็จ: '+e.message); }
-}
-function maybeCloudSync(){
-  if(cloudUrl() && cloudAutoOn()) cloudPush().catch(()=>{});
-}
+});
 
 /* ================= modal helper ================= */
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -1151,11 +1382,13 @@ window.addEventListener('beforeprint', updatePrintHead);
 
 /* ================= init ================= */
 function init(){
+  // ลบค่าตั้งของระบบคลาวด์รุ่นเก่าที่อาจค้างในเครื่อง
+  try{ localStorage.removeItem('cloudUrl'); localStorage.removeItem('cloudAuto'); }catch(e){}
   loadData();
   renderCatSelect();
   renderCalendar();
   renderList();
-  if(cloudUrl() && cloudAutoOn()) cloudPull().catch(()=>{});
+  CAL.start();
 }
 init();
 </script>
