@@ -141,6 +141,27 @@ select:focus,input:focus{outline:none;border-color:var(--navy-light);box-shadow:
 .cal-day.today .dnum{background:var(--gold);color:#09192c;box-shadow:0 2px 6px rgba(212,175,55,.4)}
 .cal-day.weekend .dnum{color:#dc2626}
 .cal-day.empty .dnum{color:#c3ccd8}
+/* วันหยุด/วันสำคัญ (ฝังในหน้าเว็บ) */
+.cal-day.hol-gov{background:#fff5f5}
+.cal-day.hol-gov:hover{background:#ffecec}
+.cal-day.hol-gov .dnum{color:#dc2626}
+.cal-day.hol-bank .dnum{color:#c2410c}
+.cal-day.today .dnum{color:#09192c}
+.cal-day .hol{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;margin:0 0 0 2px;max-height:28px;font-size:10.5px;font-weight:700;line-height:13px;overflow:hidden;word-break:break-word}
+.t-gov{color:#b91c1c}.t-pend{color:#9f1239}.t-bank{color:#c2410c}.t-day{color:#1d4ed8}
+.cal-day .hol.t-pend{font-style:italic}
+.hol-legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12.5px;color:var(--muted);margin:10px auto 0;max-width:960px}
+.hol-legend .lg{display:inline-flex;align-items:center;gap:6px}
+.hol-legend .sw{width:11px;height:11px;border-radius:3px;display:inline-block;flex:0 0 auto}
+.hol-legend .note{flex-basis:100%;font-size:11.5px}
+.hol-box{border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:14px;line-height:1.5;border:1px solid}
+.hol-box.t-gov{background:#fef2f2;border-color:#fecaca}
+.hol-box.t-pend{background:#fff1f2;border-color:#fecdd3}
+.hol-box.t-bank{background:#fff7ed;border-color:#fed7aa}
+.hol-box.t-day{background:#eff6ff;border-color:#bfdbfe}
+.hol-box .hn{font-weight:700}
+.hol-box .hx{font-size:12.5px;color:#475569;margin-top:2px}
+.hol-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:0 8px;margin-left:6px;background:#fff;border:1px solid currentColor;vertical-align:1px}
 .chips{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 .chip{
   display:block;font-size:11px;line-height:1.35;font-weight:600;
@@ -288,6 +309,11 @@ footer b{color:#d6dfef}
   .cal-week div{background:var(--navy)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:5px 2px;font-size:11pt}      .cal-day{min-height:96px;padding:4px;page-break-inside:avoid}
   .cal-day.empty{min-height:96px}
   .evbar{height:16px;font-size:8.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cal-day.hol-gov{background:#fff5f5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cal-day .hol{font-size:7.5pt}
+  .hol-legend{font-size:9pt;margin-top:6px}
+  .hol-legend .tap{display:none}
+  .hol-legend .sw{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .chips{gap:2px; overflow:visible}
   .chip{    font-size:8.5pt;padding:2px 4px;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:visible}
   .list-card{border:1.2px solid #999;box-shadow:none;border-radius:0}
@@ -303,6 +329,7 @@ footer b{color:#d6dfef}
   .evbar{font-size:10px;height:21px;padding:0 4px}
   .chips{gap:2px}
   .chip{font-size:10px;padding:2px 4px}
+  .cal-day .hol{display:inline-block;vertical-align:top;font-size:0;width:7px;height:7px;max-height:none;border-radius:50%;background:currentColor;margin:7px 0 0 1px}
   .search-box input{width:100%}
   .search-box{flex:1}
   .row2{grid-template-columns:1fr}
@@ -372,6 +399,7 @@ footer b{color:#d6dfef}
         <div>อา.</div><div>จ.</div><div>อ.</div><div>พ.</div><div>พฤ.</div><div>ศ.</div><div>ส.</div>
       </div>       <div class="cal-wrap"><div class="cal-days" id="cal-days"></div></div>
     </div>
+    <div class="hol-legend" id="hol-legend"></div>
   </div>
 
   <!-- ============ มุมมองรายการ ============ -->
@@ -505,6 +533,70 @@ const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','ม�
 const THAI_MONTHS_ABBR = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const THAI_DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 const THAI_DIGITS = '๐๑๒๓๔๕๖๗๘๙';
+
+/* ================= วันหยุดและวันสำคัญ =================
+   ฝังในหน้าเว็บ (ไม่ซิงก์ ไม่ใช่ห้วงเวลา ไม่มีใครลบได้จากหน้าเว็บ) — เมื่อ ครม. ประกาศเพิ่ม/เปลี่ยน ให้แก้รายการนี้
+   t: gov = วันหยุดราชการ, pend = วันหยุดราชการที่รอ ครม. ยืนยัน, bank = หยุดเฉพาะธนาคาร/เอกชน (ราชการไม่หยุด), day = วันสำคัญ (ไม่หยุด)
+   ที่มา (ตรวจ 13 พ.ย. 2569): ๒๕๖๙ ตามมติ ครม. + วันหยุดพิเศษ 16 ธ.ค. (มติ ครม. 10 พ.ย. 2569);
+   ๒๕๗๐ ตามประกาศสำนักนายกรัฐมนตรีเรื่องวันหยุดราชการประจำปี + ประกาศ ธปท. 37/2569 (ครม. ยังไม่มีมติวันหยุดราชการปี 2570);
+   วันทางจันทรคติคำนวณตามปฏิทินไทยและตรงกับปฏิทินที่เผยแพร่ */
+const HOLIDAY_FROM = '2026-11-01', HOLIDAY_TO = '2027-12-31';
+const HOL_TYPES = {
+  gov:  { label:'วันหยุดราชการ', color:'#dc2626', rank:0 },
+  pend: { label:'วันหยุดราชการ (รอ ครม. ยืนยัน)', color:'#e11d48', rank:1 },
+  bank: { label:'หยุดเฉพาะธนาคาร/เอกชน', color:'#ea580c', rank:2 },
+  day:  { label:'วันสำคัญ (ไม่ใช่วันหยุด)', color:'#2563eb', rank:3 }
+};
+const HOL_FATHER = 'วันคล้ายวันพระบรมราชสมภพ พระบาทสมเด็จพระบรมชนกาธิเบศร มหาภูมิพลอดุลยเดชมหาราช บรมนาถบพิตร วันชาติ และวันพ่อแห่งชาติ';
+const HOL_LABOR = 'ธนาคารและเอกชนหยุด — ส่วนราชการไม่หยุด';
+const HOLIDAY_LIST = [
+  // ---- พ.ศ. ๒๕๖๙ ----
+  ['2026-11-24','day','วันลอยกระทง'],
+  ['2026-12-05','gov','วันพ่อแห่งชาติ / วันชาติ', HOL_FATHER],
+  ['2026-12-07','gov','ชดเชยวันพ่อแห่งชาติ', 'วันหยุดชดเชยวันพ่อแห่งชาติ (5 ธ.ค. ตรงกับวันเสาร์)'],
+  ['2026-12-10','gov','วันรัฐธรรมนูญ'],
+  ['2026-12-16','gov','วันหยุดราชการกรณีพิเศษ', 'พระราชพิธีถวายพระเพลิงพระบรมศพ สมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ พระบรมราชชนนีพันปีหลวง (มติ ครม. 10 พ.ย. 2569)'],
+  ['2026-12-31','gov','วันสิ้นปี'],
+  // ---- พ.ศ. ๒๕๗๐ ----
+  ['2027-01-01','gov','วันขึ้นปีใหม่'],
+  ['2027-01-09','day','วันเด็กแห่งชาติ'],
+  ['2027-01-16','day','วันครู'],
+  ['2027-01-18','day','วันกองทัพไทย'],
+  ['2027-02-06','day','วันตรุษจีน'],
+  ['2027-02-21','gov','วันมาฆบูชา'],
+  ['2027-02-22','gov','ชดเชยวันมาฆบูชา', 'วันหยุดชดเชยวันมาฆบูชา (21 ก.พ. ตรงกับวันอาทิตย์)'],
+  ['2027-04-06','gov','วันจักรี'],
+  ['2027-04-13','gov','วันสงกรานต์'],
+  ['2027-04-14','gov','วันสงกรานต์'],
+  ['2027-04-15','gov','วันสงกรานต์'],
+  ['2027-05-01','bank','วันแรงงานแห่งชาติ', HOL_LABOR],
+  ['2027-05-03','bank','ชดเชยวันแรงงาน', 'วันหยุดชดเชยวันแรงงานแห่งชาติ — ' + HOL_LABOR],
+  ['2027-05-04','gov','วันฉัตรมงคล'],
+  ['2027-05-20','gov','วันวิสาขบูชา'],
+  ['2027-06-03','gov','วันเฉลิมฯ พระราชินี', 'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าสุทิดา พัชรสุธาพิมลลักษณ พระบรมราชินี'],
+  ['2027-07-18','gov','วันอาสาฬหบูชา'],
+  ['2027-07-19','gov','วันเข้าพรรษา', 'ธนาคารและเอกชน: วันหยุดชดเชยวันอาสาฬหบูชา (18 ก.ค. ตรงกับวันอาทิตย์)'],
+  ['2027-07-20','pend','ชดเชยวันอาสาฬหบูชา', 'คาดว่าเป็นวันหยุดชดเชยเฉพาะส่วนราชการ — รอ ครม. ประกาศ'],
+  ['2027-07-28','gov','วันเฉลิมฯ ร.๑๐', 'วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว'],
+  ['2027-08-12','gov','วันแม่แห่งชาติ', 'วันคล้ายวันพระราชสมภพ สมเด็จพระบรมราชชนนีพันปีหลวง และวันแม่แห่งชาติ'],
+  ['2027-10-13','gov','วันนวมินทรมหาราช', 'วันคล้ายวันสวรรคต พระบาทสมเด็จพระบรมชนกาธิเบศร มหาภูมิพลอดุลยเดชมหาราช บรมนาถบพิตร'],
+  ['2027-10-13','day','วันตำรวจ'],
+  ['2027-10-15','day','วันออกพรรษา'],
+  ['2027-10-23','gov','วันปิยมหาราช'],
+  ['2027-10-25','gov','ชดเชยวันปิยมหาราช', 'วันหยุดชดเชยวันปิยมหาราช (23 ต.ค. ตรงกับวันเสาร์)'],
+  ['2027-11-13','day','วันลอยกระทง'],
+  ['2027-12-05','gov','วันพ่อแห่งชาติ / วันชาติ', HOL_FATHER],
+  ['2027-12-06','gov','ชดเชยวันพ่อแห่งชาติ', 'วันหยุดชดเชยวันพ่อแห่งชาติ (5 ธ.ค. ตรงกับวันอาทิตย์)'],
+  ['2027-12-10','gov','วันรัฐธรรมนูญ'],
+  ['2027-12-31','gov','วันสิ้นปี']
+];
+const HOLIDAYS = {};
+HOLIDAY_LIST.forEach(([d,t,n,x]) => { (HOLIDAYS[d] = HOLIDAYS[d] || []).push({ t, n, x: x || '' }); });
+Object.values(HOLIDAYS).forEach(a => a.sort((p,q) => HOL_TYPES[p.t].rank - HOL_TYPES[q.t].rank));
+function holidaysOn(ymd){ return HOLIDAYS[ymd] || []; }
+const HOL_OFF = 32;                       // ความสูงชื่อวันหยุด 2 บรรทัด (จอกว้าง)
+const NARROW_MQ = '(max-width:640px)';    // ตรงกับ @media ของจอมือถือ
+try{ window.matchMedia(NARROW_MQ).addEventListener('change', ()=>{ try{ renderCalendar(); }catch(e){} }); }catch(e){}
 
 let ENTRIES = [];
 let CATS = [];
@@ -670,22 +762,35 @@ function renderCalendar(){
   });
   let html = '';
   let dayCursor = 1;
+  let govDays = 0;
+  const narrow = window.matchMedia(NARROW_MQ).matches;
   for(let w=0; w<weekCount; w++){
     const bars = weekBars[w];
     const nLanes = bars.length ? Math.max(...bars.map(x=>x.lane))+1 : 0;
-    const rowMinH = Math.max(110, 30 + nLanes*LANE_H + 8);
-    html += `<div class="cal-weekrow" style="min-height:${rowMinH}px">`;
+    let ch = '', weekHol = false;
     for(let d=0; d<7; d++){
       const cell = w*7+d;
-      if(cell < firstDow || dayCursor > nDays){ html += '<div class="cal-day empty"></div>'; continue; }
+      if(cell < firstDow || dayCursor > nDays){ ch += '<div class="cal-day empty"></div>'; continue; }
       const key = y+'-'+pad2(m+1)+'-'+pad2(dayCursor);
       const dow = new Date(y,m,dayCursor).getDay();
-      const cls = ['cal-day', dow===0||dow===6?'weekend':'', key===todayStr?'today':''].join(' ');
-      html += `<div class="${cls}" onclick="openDayModal('${key}')">`;
-      html += `<span class="dnum">${thaiDigits(dayCursor)}</span>`;
-      html += '</div>';
+      const hs = holidaysOn(key);
+      const top = hs.length ? hs[0].t : '';
+      if(hs.some(h=>h.t==='gov')) govDays++;
+      const cls = ['cal-day', dow===0||dow===6?'weekend':'', key===todayStr?'today':'', top==='gov'?'hol-gov':'', top==='bank'?'hol-bank':''].join(' ');
+      ch += `<div class="${cls}" onclick="openDayModal('${key}')">`;
+      ch += `<span class="dnum">${thaiDigits(dayCursor)}</span>`;
+      if(hs.length){
+        weekHol = true;
+        const tip = hs.map(h=>h.n+' ('+HOL_TYPES[h.t].label+')').join(' · ');
+        ch += `<span class="hol t-${top}" title="${esc(tip)}">${esc(hs.map(h=>h.n).join(' · '))}</span>`;
+      }
+      ch += '</div>';
       dayCursor++;
     }
+    // สัปดาห์ที่มีชื่อวันหยุด (จอกว้าง) เลื่อนแถบห้วงเวลาลงให้พ้นชื่อ 2 บรรทัด; จอมือถือแสดงเป็นจุดจึงไม่ต้องเลื่อน
+    const holOff = (weekHol && !narrow) ? HOL_OFF : 0;
+    const rowMinH = Math.max(110, 30 + holOff + nLanes*LANE_H + 8);
+    html += `<div class="cal-weekrow" style="min-height:${rowMinH}px">` + ch;
     bars.forEach(({it,lane,a,b,contL,contR})=>{
       const e = it.e;
       const c = catById(e.catId);
@@ -694,7 +799,7 @@ function renderCalendar(){
       const left = (a-w*7)/7*100, width = (b-a+1)/7*100;
       html +=
         `<div class="evbar${contL?' cont-l':''}${contR?' cont-r':''}" ` +
-        `style="top:${28+lane*LANE_H}px;left:calc(${left}% + 1px);width:calc(${width}% - 2px);background:${hexA(col,.14)};color:${col};border-left:3px solid ${col}" ` +
+        `style="top:${28+holOff+lane*LANE_H}px;left:calc(${left}% + 1px);width:calc(${width}% - 2px);background:${hexA(col,.14)};color:${col};border-left:3px solid ${col}" ` +
         `title="${esc(e.title||'')}${tstr?' ('+esc(tstr)+')':''}" ` +
         `onclick="event.stopPropagation();openEntryModal('${e.id}')">` +
         `${tstr?`<span class="ct">${esc(tstr)}</span>`:''}${esc(e.title||'(ไม่ระบุเรื่อง)')}</div>`;
@@ -702,7 +807,18 @@ function renderCalendar(){
     html += '</div>';
   }
   document.getElementById('cal-days').innerHTML = html;
-  document.getElementById('cal-count').textContent = `เดือนนี้ ${thaiDigits(spans.length)} ห้วงเวลา`;
+  document.getElementById('cal-count').textContent = `เดือนนี้ ${thaiDigits(spans.length)} ห้วงเวลา` + (govDays ? ` · วันหยุดราชการ ${thaiDigits(govDays)} วัน` : '');
+  renderHolLegend(monthStart, monthEnd);
+}
+function renderHolLegend(monthStart, monthEnd){
+  const el = document.getElementById('hol-legend');
+  if(!el) return;
+  let h = Object.keys(HOL_TYPES).map(k=>`<span class="lg"><span class="sw" style="background:${HOL_TYPES[k].color}"></span>${esc(HOL_TYPES[k].label)}</span>`).join('');
+  let note = '';
+  if(monthEnd < HOLIDAY_FROM || monthStart > HOLIDAY_TO) note = 'ยังไม่มีข้อมูลวันหยุดของเดือนนี้ (มีข้อมูล พ.ย. ๒๕๖๙ – ธ.ค. ๒๕๗๐)';
+  else if(monthStart >= '2027-01-01') note = 'วันหยุดราชการปี ๒๕๗๐ ตามประกาศสำนักนายกรัฐมนตรี — ครม. ยังไม่มีมติยืนยัน (วันพืชมงคลยังไม่กำหนดวัน)';
+  const tap = note.startsWith('ยังไม่มี') ? '' : `<span class="tap">${note ? ' · ' : ''}กดที่วันเพื่อดูรายละเอียดวันหยุด</span>`;
+  el.innerHTML = h + `<span class="note">${esc(note)}${tap}</span>`;
 }
 function byDateAllCount(){
   const cat = activeCatFilter();
@@ -870,10 +986,11 @@ function openDayModal(key){
   const list = ENTRIES.filter(e=> e.startDate<=key && e.endDate>=key && (cat==='all'||e.catId===cat))
     .sort((a,b)=> (a.startTime||'').localeCompare(b.startTime||''));
   const body = document.getElementById('day-modal-body');
+  const holHtml = holidaysOn(key).map(h=>`<div class="hol-box t-${h.t}"><span class="hn t-${h.t}">${esc(h.n)}</span><span class="hol-tag t-${h.t}">${esc(HOL_TYPES[h.t].label)}</span>${h.x?`<div class="hx">${esc(h.x)}</div>`:''}</div>`).join('');
   if(list.length===0){
-    body.innerHTML = `<div class="empty-state" style="padding:30px 10px"><div class="big">📭</div><h3>ไม่มีห้วงเวลาในวันนี้</h3><p>กดปุ่มด้านล่างเพื่อเพิ่มรายการ</p></div>`;
+    body.innerHTML = holHtml + `<div class="empty-state" style="padding:30px 10px"><div class="big">📭</div><h3>ไม่มีห้วงเวลาในวันนี้</h3><p>กดปุ่มด้านล่างเพื่อเพิ่มรายการ</p></div>`;
   } else {
-    body.innerHTML = list.map(e=>{
+    body.innerHTML = holHtml + list.map(e=>{
       const c = catById(e.catId);
       return `<div class="day-item">
         <div class="di-info">
